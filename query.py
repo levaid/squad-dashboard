@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os.path
 import time
 from datetime import datetime, timezone
 
@@ -13,6 +14,7 @@ from bs4 import BeautifulSoup
 def parse_args():
     parser = argparse.ArgumentParser(description='My Application')
     parser.add_argument('--server_id', type=int, help='An ID for the server')
+    parser.add_argument('--log_folder', type=str, help='Folder for logging', default='./data')
 
     args = parser.parse_args()
     return args
@@ -23,7 +25,7 @@ def get_server_info(server_id: int) -> str:
     soup = BeautifulSoup(response.text, features='html.parser')
     server_info = soup.find('div', {'class': 'server-info'})
     if server_info is None:
-        'ERROR'
+        return 'ERROR'
 
     return server_info.get_text(separator=';')
 
@@ -34,8 +36,8 @@ def get_current_time() -> str:
     return formatted_utc_time
 
 
-def job(server_id: int, filename: str):
-    with open(filename, 'a', encoding='utf-8') as outfile:
+def job(server_id: int, folder: str):
+    with open(os.path.join(folder, 'raw_query_log.csv'), 'a', encoding='utf-8') as outfile:
         writer = csv.writer(outfile)
         server_info = get_server_info(server_id)
         current_time = get_current_time()
@@ -44,7 +46,7 @@ def job(server_id: int, filename: str):
 
 def main():
     args = parse_args()
-    schedule.every(5).minutes.do(job, server_id=args.server_id, filename='query_log.csv')
+    schedule.every(1).minutes.do(job, server_id=args.server_id, folder=args.log_folder)
     while True:
         schedule.run_pending()
         time.sleep(1)
