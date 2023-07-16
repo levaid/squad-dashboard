@@ -17,7 +17,8 @@ def parse_args():
 
 
 def process(log_folder: str):
-    raw_data = pd.read_csv(os.path.join(log_folder, 'raw_query_log.csv'), names=['time', 'data'])
+    raw_data_with_errors = pd.read_csv(os.path.join(log_folder, 'raw_query_log.csv'), names=['time', 'data'])
+    raw_data = raw_data_with_errors.query('data != "ERROR"').copy()
     df = raw_data[['time']].copy()
     df['player_count'] = raw_data['data'].apply(
         lambda d: get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')
@@ -25,6 +26,7 @@ def process(log_folder: str):
     df['layer'] = raw_data['data'].apply(
         lambda d: get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
     )
+    df['seeding'] = df['layer'].apply(lambda s: 'seed' in s.lower())
     df.to_csv(os.path.join(log_folder, 'processed_timeline.csv'), index=False)
     return df
 
