@@ -1,5 +1,7 @@
-pandas
+pandas~=2.0.3
 beautifulsoup4~=4.12.2
-dash
+dash~=2.11.1
 requests~=2.31.0
 schedule~=1.2.0
+plotly~=5.15.0
+flask~=2.2.5
