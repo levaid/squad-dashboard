@@ -12,7 +12,7 @@ MATCH_FILE = 'match_info.csv'
 
 
 server = flask.Flask(__name__)
-app = Dash(__name__, server=server)  # type: ignore
+app = Dash(__name__, server=server, title='MAD server statistics')  # type: ignore
 
 
 @cached(cache=TTLCache(maxsize=5, ttl=60))
