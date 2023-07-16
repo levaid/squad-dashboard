@@ -52,11 +52,12 @@ def create_match_data(timeline_df: pd.DataFrame) -> pd.DataFrame:
     # Calculate the time difference for each row compared to the previous row
     layer_df['time_diff'] = layer_df['time'].diff()
     layer_df['hours'] = layer_df['time_diff'].apply(lambda t: t.total_seconds() / 3600)
+
     layer_df['minutes'] = layer_df['time_diff'].apply(lambda t: t.total_seconds() / 60)
     layer_df['map_name'] = layer_df['previous_layer'].apply(lambda l: split_layer(l)[0])
     layer_df['game_mode'] = layer_df['previous_layer'].apply(lambda l: split_layer(l)[1])
     layer_df['version'] = layer_df['previous_layer'].apply(lambda l: split_layer(l)[2])
-
+    layer_df['live'] = layer_df['game_mode'] != 'Seed'
     # Forward fill the NA values
     # df['time_diff_since_last_change'] = df['time_diff_since_last_change'].fillna(method='ffill')
 
