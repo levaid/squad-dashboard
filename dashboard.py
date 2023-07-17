@@ -10,6 +10,7 @@ import flask
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
 import pandas as pd
+import plotly.subplots
 
 TIMELINE_FILE = 'processed_timeline.csv'
 MATCH_FILE = 'match_info.csv'
@@ -44,27 +45,19 @@ app.layout = html.Div([
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
-            id='piechart-1',
-        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
-        html.Div(children=[dcc.Graph(
-            id='piechart-2',
-        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
-        html.Div(children=[dcc.Graph(
-            id='piechart-3',
-        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+            id='first-row-piechart',
+        )], style={'width': '100%', 'display': 'inline-block', 'vertical-align': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
 
 ])
 
 
 @callback(
-    Output('piechart-1', 'figure'),
-    Output('piechart-2', 'figure'),
-    Output('piechart-3', 'figure'),
+    Output('first-row-piechart', 'figure'),
     Input('overall-timeline', 'relayoutData')
 )
 def create_pycharts(relayout):
-    df = load_file(MATCH_FILE).query('live == True and player_count >= 50')
+    df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
     timeframe = get_timeframe(relayout)
     if timeframe is None:
         filtered_df = df
@@ -75,6 +68,7 @@ def create_pycharts(relayout):
     grouped_df = filtered_df[['map_name', 'hours']].groupby('map_name').agg(['count', 'sum', 'mean'])
     grouped_df.columns = grouped_df.columns.droplevel()
     grouped_df = grouped_df.reset_index()
+    grouped_df['sum'] = grouped_df['sum'].apply(lambda n: round(n, 2))
 
     gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
     gamemode_df.columns = gamemode_df.columns.droplevel()
@@ -90,35 +84,58 @@ def create_pycharts(relayout):
         },
     }
 
-    piechart_time_spent_count = go.Figure(data=[go.Pie(
+    fig = plotly.subplots.make_subplots(
+        1,
+        3,
+        specs=[[{"type": "pie"}, {"type": "pie"}, {"type": "pie"}]],
+        horizontal_spacing=0.05,
+        vertical_spacing=0
+    )
+
+    fig.add_trace(go.Pie(
         name='',
         title='Number of times played',
         labels=grouped_df['map_name'],
         values=grouped_df['count'],
+        domain=dict(x=[0, 1 / 3]),
         hovertemplate='%{label}<br>Times played: %{value} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        sort=False,
-    )])
-    piechart_time_spent_total = go.Figure(data=[go.Pie(
+        direction='clockwise',
+        textinfo='label+value',
+        textposition='inside',
+        insidetextorientation='radial',
+        sort=True,
+    ), row=1, col=1)
+    fig.add_trace(go.Pie(
         name='',
         title='Hours spent on maps total',
         labels=grouped_df['map_name'],
         values=grouped_df['sum'],
+        domain=dict(x=[1 / 3, 2 / 3]),
         hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        sort=False,
-    )])
-    piechart_time_spent_mean = go.Figure(data=[go.Pie(
+        direction='clockwise',
+        textinfo='label+value',
+        textposition='inside',
+        insidetextorientation='radial',
+        sort=True,
+    ), row=1, col=2)
+    fig.add_trace(go.Pie(
         name='',
-        title='Number of times gamemode is played',
+        title='Number of times a gamemode is played',
         labels=gamemode_df['game_mode'],
         values=gamemode_df['count'],
-        hovertemplate='%{label}<br>Hours: %{value:.2f} (%{percent})',
+        domain=dict(x=[2 / 3, 1]),
+        hovertemplate='%{label}<br>Frequency: %{value} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        sort=False,
-    )])
-
-    return piechart_time_spent_count, piechart_time_spent_total, piechart_time_spent_mean
+        direction='clockwise',
+        textinfo='label+value',
+        textposition='inside',
+        insidetextorientation='radial',
+        sort=True,
+    ), row=1, col=3)
+    fig.update_layout(legend=dict(orientation='h'), margin=dict(t=0))
+    return fig
 
 
 @callback(
