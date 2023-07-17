@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
-import json
 import os.path
 
 from cachetools import cached, TTLCache
 
+import plotly.graph_objects as go
 import flask
 from dash import Dash, html, dcc, callback, Output, Input
 import plotly.express as px
@@ -20,14 +20,6 @@ styles = {
         'overflowX': 'scroll'
     }
 }
-
-COLOR_PALETTES = {'Sage and brown': ['#7b876d', '#989e8b', '#ddb8a6', '#d49b7e', '#c67f43', '#893f04'],
-                  'Warm earth': ['#f7d3c7', '#daa095', '#a5888a', '#927071', '#c89566', '#756156'],
-                  'Earth tone': ['#996663', '#cda39f', '#e0b39c', '#e8ce95', '#c1d0c6', '#a1aba3'][::-1],
-                  'Craigslist': ['#fbb260', '#f57d62', '#e15b64', '#abbd83', '#849b87'],
-                  'Paper flower': ['#edbdae', '#cf786f', '#eaaa65', '#becccf', '#6e7c76', '#826b5e'],
-                  'Summer 01': ['#fdc98a', '#f9b185', '#e89697', '#f4cdc8', '#c7c09b', '#969f8e'],
-                  'Cheerful neighborhood': ['#ffefd7', '#ffceae', '#f9ab89', '#e68472', '#f3c9cc', '97667b']}
 
 server = flask.Flask(__name__)
 app = Dash(__name__, server=server, title='MAD server statistics')  # type: ignore
@@ -57,6 +49,9 @@ app.layout = html.Div([
         html.Div(children=[dcc.Graph(
             id='piechart-2',
         )], style={'width': '30%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+        html.Div(children=[dcc.Graph(
+            id='piechart-3',
+        )], style={'width': '30%', 'display': 'inline-block', 'vertical-align': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
 
 ])
@@ -65,10 +60,11 @@ app.layout = html.Div([
 @callback(
     Output('piechart-1', 'figure'),
     Output('piechart-2', 'figure'),
+    Output('piechart-3', 'figure'),
     Input('overall-timeline', 'relayoutData')
 )
 def create_pycharts(relayout):
-    df = load_file(MATCH_FILE).query('live == True')
+    df = load_file(MATCH_FILE).query('live == True and player_count >= 50')
     timeframe = get_timeframe(relayout)
     if timeframe is None:
         filtered_df = df
@@ -76,7 +72,10 @@ def create_pycharts(relayout):
         starttime, endtime = timeframe
         filtered_df = df.query('time <= @endtime and time >= @starttime')
 
-    custom_color_palette = COLOR_PALETTES['Sage and brown']
+    grouped_df = filtered_df[['map_name', 'hours']].groupby('map_name').agg(['count', 'sum', 'mean'])
+    grouped_df.columns = grouped_df.columns.droplevel()
+    grouped_df = grouped_df.reset_index()
+    custom_color_palette = px.colors.qualitative.Dark24
     pie_color_map = dict(zip(filtered_df['map_name'].unique(), custom_color_palette * 2))
     style_data = {
         'color': 'map_name',
@@ -85,20 +84,33 @@ def create_pycharts(relayout):
             'map_name': sorted(pie_color_map.keys())
         },
     }
-    piechart_number_of_times = px.pie(
-        filtered_df,
-        names='map_name',
-        title='Number of times the map was played',
-        **style_data
-    )
-    piechart_time_spent = px.pie(
-        filtered_df,
-        values='hours',
-        names='map_name',
-        title='Time spent on map',
-        **style_data
-    )
-    return piechart_number_of_times, piechart_time_spent
+
+    piechart_time_spent_count = go.Figure(data=[go.Pie(
+        name='',
+        labels=grouped_df['map_name'],
+        values=grouped_df['count'],
+        hovertemplate='%{label}<br>Times played: %{value} (%{percent})',
+        marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
+        sort=False,
+    )])
+    piechart_time_spent_total = go.Figure(data=[go.Pie(
+        name='',
+        labels=grouped_df['map_name'],
+        values=grouped_df['sum'],
+        hovertemplate='%{label}<br>Hours: %{value:.2f} (%{percent})',
+        marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
+        sort=False,
+    )])
+    piechart_time_spent_mean = go.Figure(data=[go.Pie(
+        name='',
+        labels=grouped_df['map_name'],
+        values=grouped_df['mean'],
+        hovertemplate='%{label}<br>Hours: %{value:.2f} (%{percent})',
+        marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
+        sort=False,
+    )])
+
+    return piechart_time_spent_count, piechart_time_spent_total, piechart_time_spent_mean
 
 
 @callback(
@@ -112,12 +124,11 @@ def update_timeline(_n_intervals: int):
         x='time',
         y='player_count',
         hover_data=['layer'],
-        color='seeding',
         color_discrete_sequence=px.colors.qualitative.T10
     )
-    fig.update_layout(hovermode='x', dragmode='select', selectdirection='h')
+    fig.update_layout(hovermode='x', dragmode='zoom', selectdirection='h')
     fig.update_xaxes(
-        rangeslider_visible=True,
+        rangeslider_visible=False,
         rangeselector=dict(
             buttons=list([
                 dict(count=30, label="30m", step="minute", stepmode="todate"),
