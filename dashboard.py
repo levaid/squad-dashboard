@@ -39,19 +39,19 @@ app.layout = html.Div([
     ),
     html.H1(children='MAD server statistics', style={'textAlign': 'center'}),
     html.Div(id='instruction', children=[html.P(
-        'You can select the interval to inspect by pressing either of the button below or'
+        'You can select the interval to inspect by pressing either of the buttons below or '
         'by dragging on the interval selector.')]),
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
             id='piechart-1',
-        )], style={'width': '30%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
         html.Div(children=[dcc.Graph(
             id='piechart-2',
-        )], style={'width': '30%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
         html.Div(children=[dcc.Graph(
             id='piechart-3',
-        )], style={'width': '30%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+        )], style={'width': '33%', 'display': 'inline-block', 'vertical-align': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
 
 ])
@@ -75,6 +75,11 @@ def create_pycharts(relayout):
     grouped_df = filtered_df[['map_name', 'hours']].groupby('map_name').agg(['count', 'sum', 'mean'])
     grouped_df.columns = grouped_df.columns.droplevel()
     grouped_df = grouped_df.reset_index()
+
+    gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
+    gamemode_df.columns = gamemode_df.columns.droplevel()
+    gamemode_df = gamemode_df.reset_index()
+
     custom_color_palette = px.colors.qualitative.Dark24
     pie_color_map = dict(zip(filtered_df['map_name'].unique(), custom_color_palette * 2))
     style_data = {
@@ -87,6 +92,7 @@ def create_pycharts(relayout):
 
     piechart_time_spent_count = go.Figure(data=[go.Pie(
         name='',
+        title='Number of times played',
         labels=grouped_df['map_name'],
         values=grouped_df['count'],
         hovertemplate='%{label}<br>Times played: %{value} (%{percent})',
@@ -95,16 +101,18 @@ def create_pycharts(relayout):
     )])
     piechart_time_spent_total = go.Figure(data=[go.Pie(
         name='',
+        title='Hours spent on maps total',
         labels=grouped_df['map_name'],
         values=grouped_df['sum'],
-        hovertemplate='%{label}<br>Hours: %{value:.2f} (%{percent})',
+        hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
         sort=False,
     )])
     piechart_time_spent_mean = go.Figure(data=[go.Pie(
         name='',
-        labels=grouped_df['map_name'],
-        values=grouped_df['mean'],
+        title='Number of times gamemode is played',
+        labels=gamemode_df['game_mode'],
+        values=gamemode_df['count'],
         hovertemplate='%{label}<br>Hours: %{value:.2f} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
         sort=False,
@@ -131,16 +139,18 @@ def update_timeline(_n_intervals: int):
         rangeslider_visible=False,
         rangeselector=dict(
             buttons=list([
-                dict(count=30, label="30m", step="minute", stepmode="todate"),
-                dict(count=1, label="1h", step="hour", stepmode="todate"),
-                dict(count=6, label="6h", step="hour", stepmode="todate"),
-                dict(count=1, label="1d", step="day", stepmode="todate"),
-                dict(count=7, label="1w", step="day", stepmode="todate"),
-                dict(count=1, label="1M", step="month", stepmode="todate"),
+                dict(count=30, label="30m", step="minute", stepmode="backward"),
+                dict(count=1, label="1h", step="hour", stepmode="backward"),
+                dict(count=6, label="6h", step="hour", stepmode="backward"),
+                dict(count=1, label="1d", step="day", stepmode="backward"),
+                dict(count=3, label="3d", step="day", stepmode="backward"),
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=1, label="1M", step="month", stepmode="backward"),
                 dict(step="all")
             ])
         )
     )
+    fig.update_yaxes(fixedrange=True)
     return fig
 
 
