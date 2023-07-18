@@ -14,6 +14,7 @@ import plotly.subplots
 
 TIMELINE_FILE = 'processed_timeline.csv'
 MATCH_FILE = 'match_info.csv'
+SEED_LIVE_FILE = 'seed_live_info.csv'
 
 styles = {
     'pre': {
@@ -56,7 +57,9 @@ app.layout = html.Div([
             id='first-row-piechart',
         )], style={'width': '100%', 'display': 'inline-block', 'vertical-align': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
-
+    html.Div(children=[
+        dcc.Graph(id='seed-timeline')
+    ])
 ])
 
 
@@ -160,6 +163,21 @@ def update_timeline(_n_intervals: int):
         )
     )
     fig.update_yaxes(fixedrange=True)
+    return fig
+
+
+@callback(
+    Output('seed-timeline', 'figure'),
+    Input('load-interval', 'n_intervals'),
+)
+def create_seed_live_charts(_n_intervals: int):
+    df = load_file(SEED_LIVE_FILE).copy()
+    df['starttime'] = pd.to_datetime(df['starttime']).apply(lambda d: d.date())
+    df['hours'] = df['duration'].apply(lambda d: round(d / 3600, 2))
+    fig = px.bar(df, x='starttime', y='hours', color='event', barmode='group',
+                 color_discrete_sequence=px.colors.qualitative.Dark24_r,
+                 title='How long the server is seeding and live daily', text='hours', text_auto='.2f')
+    fig.update_traces(textposition="inside", cliponaxis=False)
     return fig
 
 

@@ -4,6 +4,8 @@ import re
 import time
 from functools import lru_cache
 
+import numpy as np
+import numpy.typing
 import pandas as pd
 import schedule
 
@@ -22,7 +24,74 @@ def process(log_folder: str):
     timeline_data.to_csv(os.path.join(log_folder, 'processed_timeline.csv'), index=False)
     match_data = create_match_data(timeline_data)
     match_data.to_csv(os.path.join(log_folder, 'match_info.csv'), index=False)
+    seed_data = create_seed_info(timeline_data)
+    seed_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
     return True
+
+
+def _create_seed_info(timeline_df: pd.DataFrame) -> pd.DataFrame:
+    df = timeline_df.copy()
+    df['player_count'] = df['player_count'].astype(int)
+    df['player_count_5'] = df['player_count'] >= 5
+    df['player_count_60'] = df['player_count'] >= 60
+    return df
+
+
+def custom_below(s: pd.Series) -> int:
+    if s.sum() == 0:
+        return s.index[-1]
+    return s.idxmax()
+
+
+def create_seed_info(timeline_df: pd.DataFrame) -> pd.DataFrame:
+    # Initialize a variable to keep track of the start of the current interval
+    df = timeline_df.copy()
+    df['player_count'] = df['player_count'].astype(int)
+    df['time'] = pd.to_datetime(df['time'])
+    start_index = 0
+
+    # Lists to store the intervals
+    intervals_seeding = []
+    intervals_live = []
+
+    while start_index < len(df):
+        # Select the part of the DataFrame that hasn't been considered yet
+        current_df = df.iloc[start_index:]
+
+        # Find the first indices of the conditions
+        first_exceeds_5 = (current_df['player_count'] >= 5).idxmax()
+        first_exceeds_60 = (current_df['player_count'] >= 60).idxmax()
+        first_drops_below_30 = custom_below(df.iloc[first_exceeds_60:]['player_count'] <= 30)
+        first_drops_below_5 = custom_below(df.iloc[first_exceeds_5:]['player_count'] == 0)
+
+        if first_exceeds_5 == first_exceeds_60:  # we are seeding!
+            intervals_seeding.append((first_exceeds_5, first_drops_below_5))  # this should point to the end
+            break
+
+        if first_exceeds_60 != start_index:
+            intervals_seeding.append((first_exceeds_5, first_exceeds_60))
+            intervals_live.append((first_exceeds_60, first_drops_below_30))
+
+        # Update the start_index for the next iteration to the index after the one where player_count drops to 0
+        # If player_count never drops to 0, this will be the index past the end of the DataFrame, and the loop will end
+        start_index = first_drops_below_5 + 1
+
+    data = [{
+        'event': 'seed',
+        'duration': (df['time'][end] - df['time'][start]).total_seconds(),
+        'starttime': df['time'][start],
+        'endtime': df['time'][end]
+    } for start, end in intervals_seeding]
+
+    data += [{
+        'event': 'live',
+        'duration': (df['time'][end] - df['time'][start]).total_seconds(),
+        'starttime': df['time'][start],
+        'endtime': df['time'][end]
+    } for start, end in intervals_live]
+
+    seed_df = pd.DataFrame.from_records(data).sort_values('starttime')
+    return seed_df
 
 
 def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
@@ -30,7 +99,7 @@ def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     df = raw_data[['time']].copy()
     df['player_count'] = raw_data['data'].apply(
         lambda d: get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')
-    )
+    ).apply(int)
     df['layer'] = raw_data['data'].apply(
         lambda d: get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
     )
