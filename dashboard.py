@@ -31,6 +31,14 @@ def load_file(filename: str) -> pd.DataFrame:
     return pd.read_csv(os.path.join('data', filename))
 
 
+@cached(cache=TTLCache(maxsize=5, ttl=60))
+def get_map_color_palette(_cache_key: str) -> dict[str, str]:
+    df = pd.read_csv(os.path.join('data', 'match_info.csv'))
+    custom_color_palette = px.colors.qualitative.Dark24
+    colormap = dict(zip(df['map_name'].unique(), custom_color_palette * 2))
+    return colormap
+
+
 app.layout = html.Div([
     dcc.Interval(
         id="load-interval",
@@ -73,16 +81,12 @@ def create_pycharts(relayout):
     gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
     gamemode_df.columns = gamemode_df.columns.droplevel()
     gamemode_df = gamemode_df.reset_index()
-
-    custom_color_palette = px.colors.qualitative.Dark24
-    pie_color_map = dict(zip(filtered_df['map_name'].unique(), custom_color_palette * 2))
-    style_data = {
-        'color': 'map_name',
-        'color_discrete_map': pie_color_map,
-        'category_orders': {
-            'map_name': sorted(pie_color_map.keys())
-        },
-    }
+    pie_color_map = get_map_color_palette('0')
+    style_data = dict(direction='clockwise',
+                      textinfo='label+value',
+                      textposition='inside',
+                      insidetextorientation='radial',
+                      sort=True, )
 
     fig = plotly.subplots.make_subplots(
         1,
@@ -100,11 +104,7 @@ def create_pycharts(relayout):
         domain=dict(x=[0, 1 / 3]),
         hovertemplate='%{label}<br>Times played: %{value} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        direction='clockwise',
-        textinfo='label+value',
-        textposition='inside',
-        insidetextorientation='radial',
-        sort=True,
+        **style_data
     ), row=1, col=1)
     fig.add_trace(go.Pie(
         name='',
@@ -114,11 +114,7 @@ def create_pycharts(relayout):
         domain=dict(x=[1 / 3, 2 / 3]),
         hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        direction='clockwise',
-        textinfo='label+value',
-        textposition='inside',
-        insidetextorientation='radial',
-        sort=True,
+        **style_data
     ), row=1, col=2)
     fig.add_trace(go.Pie(
         name='',
@@ -127,12 +123,8 @@ def create_pycharts(relayout):
         values=gamemode_df['count'],
         domain=dict(x=[2 / 3, 1]),
         hovertemplate='%{label}<br>Frequency: %{value} (%{percent})',
-        marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
-        direction='clockwise',
-        textinfo='label+value',
-        textposition='inside',
-        insidetextorientation='radial',
-        sort=True,
+        marker_colors=px.colors.qualitative.Dark24_r,
+        **style_data
     ), row=1, col=3)
     fig.update_layout(legend=dict(orientation='h'), margin=dict(t=0))
     return fig
