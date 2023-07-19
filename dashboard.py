@@ -23,6 +23,13 @@ styles = {
     }
 }
 
+pretty_events = {
+    'seed': 'seeding',
+    'live': 'live',
+    'dead': 'dead',
+    'dying': 'dying'
+}
+
 server = flask.Flask(__name__)
 app = Dash(__name__, server=server, title='MAD server statistics')  # type: ignore
 
@@ -50,8 +57,8 @@ app.layout = html.Div([
     html.H1(children='MAD server statistics', style={'textAlign': 'center'}),
     html.Div(id='instruction', children=[html.P(
         'You can select the interval to inspect by pressing either of the buttons below or '
-        'by dragging on the interval selector.')]),
-    html.Div(id='server-status'),
+        'by dragging on the interval selector.', style={'padding-left': '5%', 'padding-right': '5%'})]),
+    html.Div(id='server-status', style={'padding-left': '5%', 'padding-right': '5%'}),
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
@@ -181,7 +188,7 @@ def create_seed_live_charts(_n_intervals: int):
                  title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
     fig.update_traces(textposition="inside", cliponaxis=False)
-    return fig, server_status
+    return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'font-size': 19})]
 
 
 def get_timeframe(data: dict | None) -> tuple[datetime.time, datetime.time] | None:
