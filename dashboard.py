@@ -51,6 +51,7 @@ app.layout = html.Div([
     html.Div(id='instruction', children=[html.P(
         'You can select the interval to inspect by pressing either of the buttons below or '
         'by dragging on the interval selector.')]),
+    html.Div(id='server-status'),
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
@@ -168,17 +169,19 @@ def update_timeline(_n_intervals: int):
 
 @callback(
     Output('seed-timeline', 'figure'),
+    Output('server-status', 'children'),
     Input('load-interval', 'n_intervals'),
 )
 def create_seed_live_charts(_n_intervals: int):
-    df = load_file(SEED_LIVE_FILE).copy()
-    df['starttime'] = pd.to_datetime(df['starttime']).apply(lambda d: d.date())
-    df['hours'] = df['duration'].apply(lambda d: round(d / 3600, 2))
-    fig = px.bar(df, x='starttime', y='hours', color='event', barmode='group',
+    interesting_events = {'seed', 'live'}
+    df = load_file(SEED_LIVE_FILE).query('previous_event in @interesting_events').copy()
+    server_status = df.iloc[-1]['event']
+    fig = px.bar(df, x='date', y='hours', color='previous_event', barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
-                 title='How long the server is seeding and live daily', text='hours', text_auto='.2f')
+                 title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
+                 labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
     fig.update_traces(textposition="inside", cliponaxis=False)
-    return fig
+    return fig, server_status
 
 
 def get_timeframe(data: dict | None) -> tuple[datetime.time, datetime.time] | None:

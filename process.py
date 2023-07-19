@@ -4,8 +4,6 @@ import re
 import time
 from functools import lru_cache
 
-import numpy as np
-import numpy.typing
 import pandas as pd
 import schedule
 
@@ -25,16 +23,71 @@ def process(log_folder: str):
     match_data = create_match_data(timeline_data)
     match_data.to_csv(os.path.join(log_folder, 'match_info.csv'), index=False)
     seed_data = create_seed_info(timeline_data)
-    seed_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
+    event_data = create_event_log(timeline_data)
+    event_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
     return True
 
 
-def _create_seed_info(timeline_df: pd.DataFrame) -> pd.DataFrame:
+def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
     df = timeline_df.copy()
-    df['player_count'] = df['player_count'].astype(int)
-    df['player_count_5'] = df['player_count'] >= 5
-    df['player_count_60'] = df['player_count'] >= 60
-    return df
+    player_count_log = df['player_count'].values
+    # events = {'seed', 'live', 'dying', 'dead'}
+    event_log = [(0, 'dead')]
+    event_happening = False
+    current_event = 'dead'
+    for i, player_count in enumerate(player_count_log):
+        if current_event == 'dead':
+            if player_count <= 5:
+                continue
+            if player_count > 5:
+                current_event = 'seed'
+                event_happening = True
+        elif current_event == 'seed':
+            if player_count <= 5:
+                current_event = 'dead'
+                event_happening = True
+            if 5 < player_count <= 60:
+                continue
+            if player_count > 60:
+                current_event = 'live'
+                event_happening = True
+        elif current_event == 'live':
+            if player_count < 5:
+                current_event = 'dead'
+                event_happening = True
+            elif player_count < 50:
+                current_event = 'dying'
+                event_happening = True
+            elif player_count >= 50:
+                pass
+        elif current_event == 'dying':
+            if player_count < 5:
+                current_event = 'dead'
+                event_happening = True
+            if 5 <= player_count < 60:
+                pass
+            if player_count >= 60:
+                current_event = 'live'
+                event_happening = True
+        if event_happening:
+            event_log.append((i, current_event))
+            event_happening = False
+
+    if current_event in {'live', 'seed'}:  # we finished on Live, we have to add this manually:
+        event_log.append((len(player_count_log)-1, current_event))
+
+    data = [{
+        'event': event,
+        'time': df.loc[i]['time'],
+    } for i, event in event_log]
+    event_df = pd.DataFrame.from_records(data)
+    event_df['date'] = event_df['time'].apply(lambda d: d.date())
+
+    event_df['previous_event'] = event_df['event'].shift(1)
+    event_df['previous_event_time'] = event_df['time'].shift(1)
+    event_df['duration'] = event_df.apply(lambda row: (row['time'] - row['previous_event_time']).total_seconds(), axis=1)
+    event_df['hours'] = event_df['duration'].apply(lambda t: round(t / 3600, 2))
+    return event_df
 
 
 def custom_below(s: pd.Series) -> int:
@@ -97,6 +150,7 @@ def create_seed_info(timeline_df: pd.DataFrame) -> pd.DataFrame:
 def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     raw_data = raw_data_with_errors.query('data != "ERROR"').copy()
     df = raw_data[['time']].copy()
+    df['time'] = pd.to_datetime(df['time'])
     df['player_count'] = raw_data['data'].apply(
         lambda d: get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')
     ).apply(int)
@@ -104,7 +158,6 @@ def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
         lambda d: get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
     )
     df['seeding'] = df['layer'].apply(lambda s: 'seed' in s.lower())
-
     return df
 
 
