@@ -188,6 +188,7 @@ def create_seed_live_charts(_n_intervals: int):
                  title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
     fig.update_traces(textposition="inside", cliponaxis=False)
+    fig.update_xaxes(tickformat='%d %B (%a)')
     return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'font-size': 19})]
 
 
