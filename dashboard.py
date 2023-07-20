@@ -181,9 +181,10 @@ def update_timeline(_n_intervals: int):
 )
 def create_seed_live_charts(_n_intervals: int):
     interesting_events = {'seed', 'live'}
-    df = load_file(SEED_LIVE_FILE).query('previous_event in @interesting_events').copy()
+    df = load_file(SEED_LIVE_FILE).copy()
     server_status = df.iloc[-1]['event']
-    fig = px.bar(df, x='date', y='hours', color='previous_event', barmode='group',
+    print(df.iloc[-1])
+    fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event', barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
                  title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
