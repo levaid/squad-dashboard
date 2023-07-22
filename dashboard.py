@@ -8,7 +8,7 @@ from cachetools import cached, TTLCache
 
 import plotly.graph_objects as go
 import flask
-from dash import Dash, html, dcc, callback, Output, Input
+from dash import Dash, html, dcc, callback, Output, Input, dash_table
 import plotly.express as px
 import pandas as pd
 import plotly.subplots
@@ -68,12 +68,18 @@ app.layout = html.Div([
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
     html.Div(children=[
         dcc.Graph(id='seed-timeline')
-    ])
+    ]),
+    html.Div([html.Div(id='match-table', )], style={
+        'display': 'inline-block',
+        'horizontal-align': 'center',
+        'vertical-align': 'center',
+    })
 ])
 
 
 @callback(
     Output('first-row-piechart', 'figure'),
+    Output('match-table', 'children'),
     Input('overall-timeline', 'relayoutData')
 )
 def create_piecharts(relayout):
@@ -90,8 +96,8 @@ def create_piecharts(relayout):
     grouped_df = grouped_df.reset_index()
     grouped_df['sum'] = grouped_df['sum'].apply(lambda n: round(n, 2))
 
-    version_df = filtered_df[['map_name', 'previous_layer', 'version']]\
-        .groupby(['map_name', 'previous_layer'])\
+    version_df = filtered_df[['map_name', 'previous_layer', 'version']] \
+        .groupby(['map_name', 'previous_layer']) \
         .agg(['count'])
 
     version_dict_raw = version_df.to_dict('index')
@@ -100,7 +106,6 @@ def create_piecharts(relayout):
         count = count_dict[('version', 'count')]
         version_dict[map_name].append(f'{layer}: {count}')
     version_information = ['<br>'.join(sorted(version_dict[map_name])) for map_name in grouped_df['map_name']]
-
 
     gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
     gamemode_df.columns = gamemode_df.columns.droplevel()
@@ -153,7 +158,16 @@ def create_piecharts(relayout):
         **style_data
     ), row=1, col=3)
     fig.update_layout(legend=dict(orientation='h'), margin=dict(t=0))
-    return fig
+    pretty_df_for_table = filtered_df.copy()
+    pretty_df_for_table = pretty_df_for_table[['time', 'previous_layer', 'minutes', 'map_name', 'version']] \
+        .rename({'previous_layer': 'Layer'}, axis=1)
+    pretty_df_for_table['minutes'] = pretty_df_for_table['minutes'].apply(lambda m: round(m, 2))
+    table = dash_table.DataTable(
+        pretty_df_for_table.to_dict('records'),
+        [{"name": i, "id": i} for i in pretty_df_for_table.columns],
+        page_size=10
+    )
+    return fig, table
 
 
 @callback(
@@ -198,7 +212,8 @@ def create_seed_live_charts(_n_intervals: int):
     interesting_events = {'seed', 'live'}
     df = load_file(SEED_LIVE_FILE).copy()
     server_status = df.iloc[-1]['event']
-    fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event', barmode='group',
+    fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event',
+                 barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
                  title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
