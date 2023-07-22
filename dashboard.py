@@ -89,6 +89,9 @@ def create_pycharts(relayout):
     grouped_df = grouped_df.reset_index()
     grouped_df['sum'] = grouped_df['sum'].apply(lambda n: round(n, 2))
 
+    version_df = filtered_df[['map_name', 'previous_layer', 'version']].\
+        groupby(['map_name', 'previous_layer']).agg(['count'])
+
     gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
     gamemode_df.columns = gamemode_df.columns.droplevel()
     gamemode_df = gamemode_df.reset_index()
@@ -134,6 +137,7 @@ def create_pycharts(relayout):
         values=gamemode_df['count'],
         domain=dict(x=[2 / 3, 1]),
         hovertemplate='%{label}<br>Frequency: %{value} (%{percent})',
+        hovertext=gamemode_df['game_mode'],
         marker_colors=px.colors.qualitative.Dark24_r,
         **style_data
     ), row=1, col=3)
