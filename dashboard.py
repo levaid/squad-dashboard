@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import os.path
+from collections import defaultdict
 
 from cachetools import cached, TTLCache
 
@@ -75,7 +76,7 @@ app.layout = html.Div([
     Output('first-row-piechart', 'figure'),
     Input('overall-timeline', 'relayoutData')
 )
-def create_pycharts(relayout):
+def create_piecharts(relayout):
     df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
     timeframe = get_timeframe(relayout)
     if timeframe is None:
@@ -89,8 +90,17 @@ def create_pycharts(relayout):
     grouped_df = grouped_df.reset_index()
     grouped_df['sum'] = grouped_df['sum'].apply(lambda n: round(n, 2))
 
-    version_df = filtered_df[['map_name', 'previous_layer', 'version']].\
-        groupby(['map_name', 'previous_layer']).agg(['count'])
+    version_df = filtered_df[['map_name', 'previous_layer', 'version']]\
+        .groupby(['map_name', 'previous_layer'])\
+        .agg(['count'])
+
+    version_dict_raw = version_df.to_dict('index')
+    version_dict = defaultdict(list)
+    for (map_name, layer), count_dict in version_dict_raw.items():
+        count = count_dict[('version', 'count')]
+        version_dict[map_name].append(f'{layer}: {count}')
+    version_information = ['<br>'.join(sorted(version_dict[map_name])) for map_name in grouped_df['map_name']]
+
 
     gamemode_df = filtered_df[['game_mode', 'hours']].groupby('game_mode').agg(['count', 'sum', 'mean'])
     gamemode_df.columns = gamemode_df.columns.droplevel()
@@ -115,8 +125,9 @@ def create_pycharts(relayout):
         title='Number of times played',
         labels=grouped_df['map_name'],
         values=grouped_df['count'],
+        customdata=version_information,
         domain=dict(x=[0, 1 / 3]),
-        hovertemplate='%{label}<br>Times played: %{value} (%{percent})',
+        hovertemplate='%{label}<br>Times played: %{value} (%{percent})<br>Layers:<br>%{customdata}',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
         **style_data
     ), row=1, col=1)
@@ -187,7 +198,6 @@ def create_seed_live_charts(_n_intervals: int):
     interesting_events = {'seed', 'live'}
     df = load_file(SEED_LIVE_FILE).copy()
     server_status = df.iloc[-1]['event']
-    print(df.iloc[-1])
     fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event', barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
                  title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
