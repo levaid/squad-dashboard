@@ -32,8 +32,7 @@ pretty_events = {
 }
 
 server = flask.Flask(__name__)
-app = Dash(__name__, server=server, title='MAD server statistics')  # type: ignore
-
+app = Dash(__name__, server=server, title='MAD server statistics', url_base_pathname='/squad-dashboard/', ) # type: ignore
 
 @cached(cache=TTLCache(maxsize=5, ttl=60))
 def load_file(filename: str) -> pd.DataFrame:
