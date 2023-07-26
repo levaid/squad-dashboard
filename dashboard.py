@@ -32,7 +32,9 @@ pretty_events = {
 }
 
 server = flask.Flask(__name__)
-app = Dash(__name__, server=server, title='MAD server statistics', url_base_pathname='/squad-dashboard/', ) # type: ignore
+app = Dash(__name__, server=server, title='MAD server statistics',
+           url_base_pathname='/squad-dashboard/')  # type: ignore
+
 
 @cached(cache=TTLCache(maxsize=5, ttl=60))
 def load_file(filename: str) -> pd.DataFrame:
@@ -65,15 +67,65 @@ app.layout = html.Div([
             id='first-row-piechart',
         )], style={'width': '100%', 'display': 'inline-block', 'vertical-align': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
+    html.Div([
+        html.Div(id='match-table', style={'width': '50%'}),
+        dcc.Graph(id='frequent-layers', style={'width': '50%'})
+    ], style={
+        'display': 'flex',
+        'alignItems': 'center',
+        'justifyContent': 'center',
+        'padding-left': '5%',
+        'padding-right': '5%'
+    }),
     html.Div(children=[
         dcc.Graph(id='seed-timeline')
-    ]),
-    html.Div([html.Div(id='match-table', )], style={
-        'display': 'inline-block',
-        'horizontal-align': 'center',
-        'vertical-align': 'center',
-    })
+    ])
 ])
+
+
+def filter_df_for_timeline(df, relayout):
+    timeframe = get_timeframe(relayout)
+    if timeframe is None:
+        filtered_df = df
+    else:
+        starttime, endtime = timeframe
+        filtered_df = df.query('time <= @endtime and time >= @starttime')
+    return filtered_df
+
+
+@callback(
+    Output('frequent-layers', 'figure'),
+    Input('overall-timeline', 'relayoutData')
+)
+def create_frequent_layers(relayout):
+    df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
+    filtered_df = filter_df_for_timeline(df, relayout)
+    grouped_df = filtered_df[['previous_layer', 'minutes']].groupby('previous_layer').agg(['count', 'mean'])
+    grouped_df.columns = grouped_df.columns.droplevel()
+    grouped_df = grouped_df.reset_index()
+    grouped_df['map_name'] = grouped_df['previous_layer'].apply(lambda x: x.split('_')[0])
+    grouped_df['neg_count'] = -grouped_df['count']
+    grouped_df = grouped_df.sort_values(by=['neg_count', 'previous_layer'])
+    frequency_threshold = grouped_df.iloc[5]['count'] if len(grouped_df) >= 6 else 0
+    top_entries_df = grouped_df.query('count >= @frequency_threshold')
+    pie_color_map = get_map_color_palette('0')
+    _fig = go.Figure(go.Bar(x=top_entries_df['previous_layer'], y=top_entries_df['count']))
+    fig = px.bar(
+        top_entries_df,
+        x='previous_layer',
+        category_orders={'previous_layer': [grouped_df['previous_layer']]},
+        y='count',
+        color='map_name',
+        color_discrete_map=pie_color_map,
+        labels={'previous_layer': 'Layer'})
+
+    integer_tick_values = list(range(1, max(top_entries_df['count'])+1, 1)) if len(grouped_df) != 0 else []
+    fig.update_layout(
+        xaxis={'categoryorder': 'array', 'categoryarray': top_entries_df['previous_layer']},
+        yaxis={'tickvals': integer_tick_values}
+    )
+
+    return fig
 
 
 @callback(
@@ -83,12 +135,7 @@ app.layout = html.Div([
 )
 def create_piecharts(relayout):
     df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
-    timeframe = get_timeframe(relayout)
-    if timeframe is None:
-        filtered_df = df
-    else:
-        starttime, endtime = timeframe
-        filtered_df = df.query('time <= @endtime and time >= @starttime')
+    filtered_df = filter_df_for_timeline(df, relayout)
 
     grouped_df = filtered_df[['map_name', 'hours']].groupby('map_name').agg(['count', 'sum', 'mean'])
     grouped_df.columns = grouped_df.columns.droplevel()
@@ -162,9 +209,10 @@ def create_piecharts(relayout):
         .rename({'previous_layer': 'Layer'}, axis=1)
     pretty_df_for_table['minutes'] = pretty_df_for_table['minutes'].apply(lambda m: round(m, 2))
     table = dash_table.DataTable(
-        pretty_df_for_table.to_dict('records'),
+        pretty_df_for_table.sort_values('time', ascending=False).to_dict('records'),
         [{"name": i, "id": i} for i in pretty_df_for_table.columns],
-        page_size=10
+        page_size=10,
+        style_table={'overflowX': 'auto', 'minWidth': '200px', 'width': '700px', 'maxWidth': '700px'},
     )
     return fig, table
 
@@ -187,12 +235,12 @@ def update_timeline(_n_intervals: int):
         rangeslider_visible=False,
         rangeselector=dict(
             buttons=list([
-                dict(count=30, label="30m", step="minute", stepmode="backward"),
                 dict(count=1, label="1h", step="hour", stepmode="backward"),
                 dict(count=6, label="6h", step="hour", stepmode="backward"),
                 dict(count=1, label="1d", step="day", stepmode="backward"),
                 dict(count=3, label="3d", step="day", stepmode="backward"),
                 dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=14, label="2w", step="day", stepmode="backward"),
                 dict(count=1, label="1M", step="month", stepmode="backward"),
                 dict(step="all")
             ])
