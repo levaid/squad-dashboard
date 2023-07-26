@@ -117,6 +117,7 @@ def create_frequent_layers(relayout):
         y='count',
         color='map_name',
         color_discrete_map=pie_color_map,
+        title='Most frequent layers played',
         labels={'previous_layer': 'Layer'})
 
     integer_tick_values = list(range(1, max(top_entries_df['count'])+1, 1)) if len(grouped_df) != 0 else []
@@ -187,8 +188,9 @@ def create_piecharts(relayout):
         title='Hours spent on maps total',
         labels=grouped_df['map_name'],
         values=grouped_df['sum'],
+        customdata=grouped_df['mean']*60,
         domain=dict(x=[1 / 3, 2 / 3]),
-        hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})',
+        hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})<br>Average length: %{customdata:.0f} mins',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
         **style_data
     ), row=1, col=2)
