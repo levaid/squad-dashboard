@@ -15,6 +15,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='My Application')
     parser.add_argument('--server_id', type=int, help='An ID for the server')
     parser.add_argument('--log_folder', type=str, help='Folder for logging', default='./data')
+    parser.add_argument('--frequency', type=int, help='Queries every n minutes', default=1)
 
     args = parser.parse_args()
     return args
@@ -46,7 +47,8 @@ def job(server_id: int, folder: str):
 
 def main():
     args = parse_args()
-    schedule.every(1).minutes.do(job, server_id=args.server_id, folder=args.log_folder)
+    print(args)
+    schedule.every(args.frequency).minutes.do(job, server_id=args.server_id, folder=args.log_folder)
     while True:
         schedule.run_pending()
         time.sleep(1)
