@@ -56,7 +56,12 @@ app.layout = html.Div([
         max_intervals=0,  # <-- only run once
         interval=1
     ),
-    html.H1(children='MAD server statistics', style={'textAlign': 'center'}),
+    html.H1(children=[html.Span('MAD server statistics by Cucuska2 '),
+                      html.Span('('),
+                      html.Img(src=app.get_asset_url('goblin.png'), style={'height': '24px'}),
+                      html.Span(')'),
+                      ],
+            style={'textAlign': 'center'}),
     html.Div(id='instruction', children=[html.P(
         'You can select the interval to inspect by pressing either of the buttons below or '
         'by dragging on the interval selector.', style={'padding-left': '5%', 'padding-right': '5%'})]),
