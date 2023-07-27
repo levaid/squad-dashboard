@@ -47,7 +47,6 @@ def job(server_id: int, folder: str):
 
 def main():
     args = parse_args()
-    print(args)
     schedule.every(args.frequency).minutes.do(job, server_id=args.server_id, folder=args.log_folder)
     while True:
         schedule.run_pending()
