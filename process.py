@@ -89,17 +89,42 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
     return event_df
 
 
+def parse_battlemetrics_data(d: str):
+    layer = get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
+    return {
+        'player_count': int(get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')),
+        'layer': layer,
+        'seeding': 'seed' in layer.lower()
+    }
+
+
+def parse_squadservers_data(d: str):
+    layer = get_regex_from_data(d, re.compile(r'Map;;(\w+)'), '')
+    return {
+        'player_count': int(get_regex_from_data(d, re.compile(r'Players;;(\d+)/'), '-1')),
+        'layer': layer,
+        'seeding': 'seed' in layer.lower()
+    }
+
+
+def process_row(d: str) -> dict:
+    if d == 'ERROR':
+        return {}
+    if d.startswith('Rank'):
+        return parse_battlemetrics_data(d)
+    if d.startswith(';;;'):
+        return parse_squadservers_data(d)
+    print(f'error with {d}')
+    return {}
+
+
 def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     raw_data = raw_data_with_errors.query('data != "ERROR"').copy()
-    df = raw_data[['time']].copy()
+    df = raw_data[['time']].copy().reset_index()
     df['time'] = pd.to_datetime(df['time'])
-    df['player_count'] = raw_data['data'].apply(
-        lambda d: get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')
-    ).apply(int)
-    df['layer'] = raw_data['data'].apply(
-        lambda d: get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
-    )
-    df['seeding'] = df['layer'].apply(lambda s: 'seed' in s.lower())
+    processed_data = raw_data['data'].apply(process_row)
+    timeline_df = pd.json_normalize(processed_data)
+    df = pd.concat([df[['time']], timeline_df], axis=1)
     return df
 
 
