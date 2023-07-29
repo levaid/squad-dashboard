@@ -155,6 +155,8 @@ def create_match_data(timeline_df: pd.DataFrame) -> pd.DataFrame:
 
 @lru_cache(512)
 def split_layer(layer_name: str) -> tuple[str, str, str]:
+    if layer_name.lower() == 'unknown':
+        return 'unknown', 'N/A', 'N/A'
     mapname, gamemode, version, *_ = layer_name.split('_')
     return mapname, gamemode, version
 
