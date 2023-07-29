@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import math
 import os.path
 from collections import defaultdict
 
@@ -164,7 +165,6 @@ def create_piecharts(relayout):
     gamemode_df = gamemode_df.reset_index()
     pie_color_map = get_map_color_palette('0')
     style_data = dict(direction='clockwise',
-                      textinfo='label+value',
                       textposition='inside',
                       insidetextorientation='radial',
                       sort=True, )
@@ -177,6 +177,8 @@ def create_piecharts(relayout):
         vertical_spacing=0
     )
 
+    custom_text = grouped_df.apply(lambda row: f'{row["map_name"]}<br>{hour_to_pretty_time(row["sum"])}', axis=1)
+
     fig.add_trace(go.Pie(
         name='',
         title='Number of times played',
@@ -186,6 +188,7 @@ def create_piecharts(relayout):
         domain=dict(x=[0, 1 / 3]),
         hovertemplate='%{label}<br>Times played: %{value} (%{percent})<br>Layers:<br>%{customdata}',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
+        textinfo='label+value',
         **style_data
     ), row=1, col=1)
     fig.add_trace(go.Pie(
@@ -193,6 +196,8 @@ def create_piecharts(relayout):
         title='Hours spent on maps total',
         labels=grouped_df['map_name'],
         values=grouped_df['sum'],
+        text=custom_text,
+        textinfo='text',
         customdata=grouped_df['mean']*60,
         domain=dict(x=[1 / 3, 2 / 3]),
         hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})<br>Average length: %{customdata:.0f} mins',
@@ -208,6 +213,7 @@ def create_piecharts(relayout):
         hovertemplate='%{label}<br>Frequency: %{value} (%{percent})',
         hovertext=gamemode_df['game_mode'],
         marker_colors=px.colors.qualitative.Dark24_r,
+        textinfo='label+value',
         **style_data
     ), row=1, col=3)
     fig.update_layout(legend=dict(orientation='h'), margin=dict(t=0))
@@ -257,6 +263,12 @@ def update_timeline(_n_intervals: int):
     return fig
 
 
+def hour_to_pretty_time(hours: float) -> str:
+    full_hours = math.floor(hours)
+    minutes = (hours - full_hours) * 60
+    return f'{full_hours:.0f}h{minutes:.0f}m'
+
+
 @callback(
     Output('seed-timeline', 'figure'),
     Output('server-status', 'children'),
@@ -266,12 +278,13 @@ def create_seed_live_charts(_n_intervals: int):
     interesting_events = {'seed', 'live'}
     df = load_file(SEED_LIVE_FILE).copy()
     server_status = df.iloc[-1]['event']
+    df['pretty_time'] = df['hours'].dropna().apply(hour_to_pretty_time)
     fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event',
                  barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
-                 title='How long the server is seeding and live daily', text='hours', text_auto='.2f',
+                 title='How long the server is seeding and live daily', text='pretty_time',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
-    fig.update_traces(textposition="inside", cliponaxis=False)
+    fig.update_traces(textposition="inside", cliponaxis=False, textangle=0)
     fig.update_xaxes(tickformat='%d %B (%a)')
     return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'font-size': 19})]
 
