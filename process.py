@@ -36,16 +36,16 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
     current_event = 'dead'
     for i, player_count in enumerate(player_count_log):
         if current_event == 'dead':
-            if player_count <= 5:
+            if player_count < 5:
                 continue
-            if player_count > 5:
+            if player_count >= 5:
                 current_event = 'seed'
                 event_happening = True
         elif current_event == 'seed':
-            if player_count <= 5:
+            if player_count <= 2:
                 current_event = 'dead'
                 event_happening = True
-            if 5 < player_count <= 60:
+            if 2 < player_count <= 60:
                 continue
             if player_count > 60:
                 current_event = 'live'
@@ -60,10 +60,10 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
             elif player_count >= 50:
                 pass
         elif current_event == 'dying':
-            if player_count < 5:
+            if player_count < 2:
                 current_event = 'dead'
                 event_happening = True
-            if 5 <= player_count < 60:
+            if 2 <= player_count < 60:
                 pass
             if player_count >= 60:
                 current_event = 'live'
