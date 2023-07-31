@@ -58,20 +58,22 @@ app.layout = html.Div([
         interval=1
     ),
     html.H1(children=[html.Span('MAD server statistics by Cucuska2 '),
-                      html.Span('('),
-                      html.Img(src=app.get_asset_url('goblin.png'), style={'height': '24px'}),
-                      html.Span(')'),
+                      html.Img(src=app.get_asset_url('goblin.png'), style={
+                          'height': '32px',
+                          'verticalAlign': 'bottom',
+                          'paddingBottom': '8px'
+                      }),
                       ],
             style={'textAlign': 'center'}),
     html.Div(id='instruction', children=[html.P(
         'You can select the interval to inspect by pressing either of the buttons below or '
-        'by dragging on the interval selector.', style={'padding-left': '5%', 'padding-right': '5%'})]),
-    html.Div(id='server-status', style={'padding-left': '5%', 'padding-right': '5%'}),
+        'by dragging on the interval selector.', style={'paddingLeft': '5%', 'paddingRight': '5%'})]),
+    html.Div(id='server-status', style={'paddingLeft': '5%', 'paddingRight': '5%'}),
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
             id='first-row-piechart',
-        )], style={'width': '100%', 'display': 'inline-block', 'vertical-align': 'middle'}),
+        )], style={'width': '100%', 'display': 'inline-block', 'verticalAlign': 'middle'}),
     ], style={'display': 'flex', 'alignItems': 'center', 'justifyContent': 'center'}),
     html.Div([
         html.Div(id='match-table', style={'width': '50%'}),
@@ -80,8 +82,8 @@ app.layout = html.Div([
         'display': 'flex',
         'alignItems': 'center',
         'justifyContent': 'center',
-        'padding-left': '5%',
-        'padding-right': '5%'
+        'paddingLeft': '5%',
+        'paddingRight': '5%'
     }),
     html.Div(children=[
         dcc.Graph(id='seed-timeline')
@@ -96,7 +98,7 @@ def filter_df_for_timeline(df, relayout):
     else:
         starttime, endtime = timeframe
         filtered_df = df.query('time <= @endtime and time >= @starttime')
-    return filtered_df
+    return filtered_df.copy()
 
 
 @callback(
@@ -272,21 +274,22 @@ def hour_to_pretty_time(hours: float) -> str:
 @callback(
     Output('seed-timeline', 'figure'),
     Output('server-status', 'children'),
-    Input('load-interval', 'n_intervals'),
+    Input('overall-timeline', 'relayoutData')
 )
-def create_seed_live_charts(_n_intervals: int):
+def create_seed_live_charts(relayout):
     interesting_events = {'seed', 'live'}
-    df = load_file(SEED_LIVE_FILE).copy()
+    raw_df = load_file(SEED_LIVE_FILE).copy()
+    df = filter_df_for_timeline(raw_df, relayout)
     server_status = df.iloc[-1]['event']
     df['pretty_time'] = df['hours'].dropna().apply(hour_to_pretty_time)
     fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event',
                  barmode='group',
                  color_discrete_sequence=px.colors.qualitative.Dark24_r,
                  title='How long the server is seeding and live daily', text='pretty_time',
-                 labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live'})
+                 labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live', 'pretty_time': 'Time elapsed'})
     fig.update_traces(textposition="inside", cliponaxis=False, textangle=0)
     fig.update_xaxes(tickformat='%d %B (%a)')
-    return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'font-size': 19})]
+    return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'fontSize': 19})]
 
 
 def get_timeframe(data: dict | None) -> tuple[datetime.time, datetime.time] | None:
