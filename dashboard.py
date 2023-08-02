@@ -128,7 +128,7 @@ def create_frequent_layers(relayout):
         title='Most frequent layers played',
         labels={'previous_layer': 'Layer'})
 
-    integer_tick_values = list(range(1, max(top_entries_df['count'])+1, 1)) if len(grouped_df) != 0 else []
+    integer_tick_values = list(range(1, max(top_entries_df['count']) + 1, 1)) if len(grouped_df) != 0 else []
     fig.update_layout(
         xaxis={'categoryorder': 'array', 'categoryarray': top_entries_df['previous_layer']},
         yaxis={'tickvals': integer_tick_values}
@@ -200,7 +200,7 @@ def create_piecharts(relayout):
         values=grouped_df['sum'],
         text=custom_text,
         textinfo='text',
-        customdata=grouped_df['mean']*60,
+        customdata=grouped_df['mean'] * 60,
         domain=dict(x=[1 / 3, 2 / 3]),
         hovertemplate='%{label}<br>Total hours: %{value:.2f} (%{percent})<br>Average length: %{customdata:.0f} mins',
         marker_colors=[pie_color_map[mapname] for mapname in grouped_df['map_name']],
@@ -280,7 +280,7 @@ def create_seed_live_charts(relayout):
     interesting_events = {'seed', 'live'}
     raw_df = load_file(SEED_LIVE_FILE).copy()
     df = filter_df_for_timeline(raw_df, relayout)
-    server_status = df.iloc[-1]['event']
+    server_status = raw_df.iloc[-1]['event']
     df['pretty_time'] = df['hours'].dropna().apply(hour_to_pretty_time)
     fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event',
                  barmode='group',
@@ -289,7 +289,19 @@ def create_seed_live_charts(relayout):
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live', 'pretty_time': 'Time elapsed'})
     fig.update_traces(textposition="inside", cliponaxis=False, textangle=0)
     fig.update_xaxes(tickformat='%d %B (%a)')
-    return fig, [html.Span('Server is currently: '), html.B(pretty_events[server_status], style={'fontSize': 19})]
+    return fig, server_current_status()
+
+
+def server_current_status():
+    server_status = load_file(SEED_LIVE_FILE).iloc[-1]['event']
+    player_count = load_file(TIMELINE_FILE).iloc[-1]['player_count']
+    return [
+        html.Span('Current player count: '),
+        html.B(player_count, style={'fontSize': 19}),
+        html.Span('.', style={'paddingRight': '5px'}),
+        html.Span('Server is currently: '),
+        html.B(pretty_events[server_status], style={'fontSize': 19})
+    ]
 
 
 def get_timeframe(data: dict | None) -> tuple[datetime.time, datetime.time] | None:
