@@ -95,7 +95,8 @@ def parse_battlemetrics_data(d: str):
     return {
         'player_count': int(get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')),
         'layer': layer,
-        'seeding': 'seed' in layer.lower()
+        'seeding': 'seed' in layer.lower(),
+        'source': 'Battlemetrics'
     }
 
 
@@ -104,7 +105,8 @@ def parse_squadservers_data(d: str):
     return {
         'player_count': int(get_regex_from_data(d, re.compile(r'Players;;(\d+)/'), '-1')),
         'layer': layer,
-        'seeding': 'seed' in layer.lower()
+        'seeding': 'seed' in layer.lower(),
+        'source': 'Squad-servers.com'
     }
 
 

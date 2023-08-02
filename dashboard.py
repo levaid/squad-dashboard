@@ -242,7 +242,7 @@ def update_timeline(_n_intervals: int):
         df,
         x='time',
         y='player_count',
-        hover_data=['layer'],
+        hover_data=['layer', 'source'],
         color_discrete_sequence=px.colors.qualitative.T10
     )
     fig.update_layout(hovermode='x', dragmode='zoom', selectdirection='h')
