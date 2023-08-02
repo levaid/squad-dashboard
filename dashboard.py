@@ -65,10 +65,16 @@ app.layout = html.Div([
                       }),
                       ],
             style={'textAlign': 'center'}),
-    html.Div(id='instruction', children=[html.P(
-        'You can select the interval to inspect by pressing either of the buttons below or '
-        'by dragging on the interval selector.', style={'paddingLeft': '5%', 'paddingRight': '5%'})]),
     html.Div(id='server-status', style={'paddingLeft': '5%', 'paddingRight': '5%'}),
+    html.Div(id='instruction', children=[
+        html.P(
+            'You can select the interval to inspect by pressing either of the buttons below or '
+            'by dragging on the interval selector.',
+        ),
+        html.P('Note: if the interval selector is moved around fast '
+               'you may have to wait a bit for the rest of the charts to update')],
+             style={'paddingLeft': '5%', 'paddingRight': '5%'}),
+
     dcc.Graph(id='overall-timeline'),
     html.Div(children=[
         html.Div(children=[dcc.Graph(
@@ -220,14 +226,16 @@ def create_piecharts(relayout):
     ), row=1, col=3)
     fig.update_layout(legend=dict(orientation='h'), margin=dict(t=0))
     pretty_df_for_table = filtered_df.copy()
-    pretty_df_for_table = pretty_df_for_table[['time', 'previous_layer', 'minutes', 'map_name', 'version']] \
-        .rename({'previous_layer': 'Layer'}, axis=1)
+    pretty_df_for_table = pretty_df_for_table[
+        ['time', 'previous_layer', 'minutes', 'mean_player_count', 'map_name', 'version']] \
+        .rename({'previous_layer': 'layer', 'mean_player_count': 'players', 'map_name': 'map'}, axis=1)
     pretty_df_for_table['minutes'] = pretty_df_for_table['minutes'].apply(lambda m: round(m, 2))
+    pretty_df_for_table['players'] = pretty_df_for_table['players'].apply(lambda m: round(m, 1))
     table = dash_table.DataTable(
         pretty_df_for_table.sort_values('time', ascending=False).to_dict('records'),
         [{"name": i, "id": i} for i in pretty_df_for_table.columns],
         page_size=10,
-        style_table={'overflowX': 'auto', 'minWidth': '200px', 'width': '700px', 'maxWidth': '700px'},
+        style_table={'overflowX': 'auto', 'minWidth': '0px', 'width': '100%', 'maxWidth': '100%'},
     )
     return fig, table
 
@@ -243,11 +251,17 @@ def update_timeline(_n_intervals: int):
         x='time',
         y='player_count',
         hover_data=['layer', 'source'],
-        color_discrete_sequence=px.colors.qualitative.T10
+        color_discrete_sequence=px.colors.qualitative.T10,
+        labels={'player_count': 'Player count'},
+
+        render_mode='webg1'
     )
     fig.update_layout(hovermode='x', dragmode='zoom', selectdirection='h')
     fig.update_xaxes(
-        rangeslider_visible=False,
+        rangeslider=dict(
+            visible=True,
+        ),
+        type="date",
         rangeselector=dict(
             buttons=list([
                 dict(count=1, label="1h", step="hour", stepmode="backward"),
