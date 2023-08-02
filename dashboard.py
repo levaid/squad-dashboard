@@ -106,7 +106,7 @@ def filter_df_for_timeline(df, relayout):
     Input('overall-timeline', 'relayoutData')
 )
 def create_frequent_layers(relayout):
-    df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
+    df = load_file(MATCH_FILE).query('live == True and mean_player_count >= 30')
     filtered_df = filter_df_for_timeline(df, relayout)
     grouped_df = filtered_df[['previous_layer', 'minutes']].groupby('previous_layer').agg(['count', 'mean'])
     grouped_df.columns = grouped_df.columns.droplevel()
@@ -143,7 +143,7 @@ def create_frequent_layers(relayout):
     Input('overall-timeline', 'relayoutData')
 )
 def create_piecharts(relayout):
-    df = load_file(MATCH_FILE).query('live == True and player_count >= 30')
+    df = load_file(MATCH_FILE).query('live == True and mean_player_count >= 40')
     filtered_df = filter_df_for_timeline(df, relayout)
 
     grouped_df = filtered_df[['map_name', 'hours']].groupby('map_name').agg(['count', 'sum', 'mean'])

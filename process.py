@@ -4,6 +4,7 @@ import re
 import time
 from functools import lru_cache
 
+import numpy as np
 import pandas as pd
 import schedule
 
@@ -137,9 +138,13 @@ def create_match_data(timeline_df: pd.DataFrame) -> pd.DataFrame:
     # Create a new column that indicates when 'layer' changes
     df['layer_changed'] = df['layer'].ne(df['previous_layer'])
     layer_df = df.query('layer_changed == True').dropna(subset='previous_layer').copy()
+    mapchange_indices = zip([0] + list(layer_df.index)[:-1], list(layer_df.index))  # dirty trick to get the index intervals
+    mapchange_player_counts = [np.mean(df['player_count'].loc[start: stop]) for start, stop in mapchange_indices]
+
 
     # Calculate the time difference for each row compared to the previous row
     layer_df['time_diff'] = layer_df['time'].diff()
+    layer_df['mean_player_count'] = mapchange_player_counts
     layer_df['hours'] = layer_df['time_diff'].apply(lambda t: t.total_seconds() / 3600)
 
     layer_df['minutes'] = layer_df['time_diff'].apply(lambda t: t.total_seconds() / 60)
