@@ -308,13 +308,33 @@ def create_seed_live_charts(relayout):
 
 def server_current_status():
     server_status = load_file(SEED_LIVE_FILE).iloc[-1]['event']
-    player_count = load_file(TIMELINE_FILE).iloc[-1]['player_count']
+    df = load_file(TIMELINE_FILE)
+    player_count, current_layer = df.iloc[-1]['player_count'], df.iloc[-1]['layer']
+    history_df = df.iloc[-120:].sort_values('time', ascending=False).copy()
+    history_df['time'] = pd.to_datetime(history_df['time'])
+    current_time = history_df.iloc[0]['time']
+    different_layer_timestamp_slice = history_df.query('layer != @current_layer')
+    if len(different_layer_timestamp_slice) == 0:
+        length_string = 'for a while'
+    else:
+        starttime = different_layer_timestamp_slice.iloc[0]['time']
+        time_elapsed_minutes = (current_time - starttime).total_seconds() // 60
+        hours, minutes = divmod(time_elapsed_minutes, 60)
+        length_string = f'{hours:.0f}h {minutes:.0f}m'
+
     return [
-        html.Span('Current player count: '),
+        html.Span('Player count: '),
         html.B(player_count, style={'fontSize': 19}),
         html.Span('.', style={'paddingRight': '5px'}),
-        html.Span('Server is currently: '),
-        html.B(pretty_events[server_status], style={'fontSize': 19})
+        html.Span('Layer: '),
+        html.B(current_layer, style={'fontSize': 19}),
+        html.Span('.', style={'paddingRight': '5px'}),
+        html.Span('Length: '),
+        html.B(length_string, style={'fontSize': 19}),
+        html.Span('.', style={'paddingRight': '5px'}),
+        html.Span('Server is '),
+        html.B(pretty_events[server_status], style={'fontSize': 19}),
+        html.Span('.', style={'paddingRight': '5px'}),
     ]
 
 

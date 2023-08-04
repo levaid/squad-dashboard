@@ -18,6 +18,7 @@ def parse_args():
 
 
 def process(log_folder: str):
+    starttime = time.time()
     raw_data_with_errors = pd.read_csv(os.path.join(log_folder, 'raw_query_log.csv'), names=['time', 'data'])
     timeline_data = create_timeline(raw_data_with_errors)
     timeline_data.to_csv(os.path.join(log_folder, 'processed_timeline.csv'), index=False)
@@ -25,6 +26,8 @@ def process(log_folder: str):
     match_data.to_csv(os.path.join(log_folder, 'match_info.csv'), index=False)
     event_data = create_event_log(timeline_data)
     event_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
+    endtime = time.time()
+    print(f'Job took {endtime-starttime:.2f} seconds.')
     return True
 
 
