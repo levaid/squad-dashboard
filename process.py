@@ -34,24 +34,29 @@ def process(log_folder: str):
 def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
     df = timeline_df.copy()
     player_count_log = df['player_count'].values
+    layer_log = df['layer'].values
     # events = {'seed', 'live', 'dying', 'dead'}
     event_log = [(0, 'dead')]
     event_happening = False
     current_event = 'dead'
-    for i, player_count in enumerate(player_count_log):
+    for i, (player_count, layer) in enumerate(zip(player_count_log, layer_log)):
+        is_seeding_layer = 'seed' in layer.lower()
         if current_event == 'dead':
             if player_count < 5:
                 continue
-            if player_count >= 5:
+            elif player_count >= 5:
                 current_event = 'seed'
                 event_happening = True
         elif current_event == 'seed':
             if player_count <= 2:
                 current_event = 'dead'
                 event_happening = True
-            if 2 < player_count <= 60:
+            elif 2 < player_count <= 50:
                 continue
-            if player_count > 60:
+            elif 50 < player_count <= 60 and not is_seeding_layer:  # mapchanged from seeding to live layer
+                current_event = 'live'
+                event_happening = True
+            elif player_count > 60:
                 current_event = 'live'
                 event_happening = True
         elif current_event == 'live':
@@ -67,9 +72,9 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
             if player_count < 2:
                 current_event = 'dead'
                 event_happening = True
-            if 2 <= player_count < 60:
+            elif 2 <= player_count < 60:
                 pass
-            if player_count >= 60:
+            elif player_count >= 60:
                 current_event = 'live'
                 event_happening = True
         if event_happening:

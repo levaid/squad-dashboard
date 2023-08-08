@@ -32,6 +32,8 @@ pretty_events = {
     'dying': 'dying'
 }
 
+EVENT_COLORMAP = {'seed': px.colors.qualitative.Dark24_r[0], 'live': px.colors.qualitative.Dark24_r[1]}
+
 server = flask.Flask(__name__)
 app = Dash(__name__, server=server, title='MAD server statistics',
            url_base_pathname='/squad-dashboard/')  # type: ignore
@@ -298,7 +300,7 @@ def create_seed_live_charts(relayout):
     df['pretty_time'] = df['hours'].dropna().apply(hour_to_pretty_time)
     fig = px.bar(df.query('previous_event in @interesting_events'), x='date', y='hours', color='previous_event',
                  barmode='group',
-                 color_discrete_sequence=px.colors.qualitative.Dark24_r,
+                 color_discrete_map=EVENT_COLORMAP,
                  title='How long the server is seeding and live daily', text='pretty_time',
                  labels={'previous_event': 'Event', 'seed': 'Seeding', 'live': 'Live', 'pretty_time': 'Time elapsed'})
     fig.update_traces(textposition="inside", cliponaxis=False, textangle=0)
