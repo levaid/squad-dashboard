@@ -247,15 +247,21 @@ def create_piecharts(relayout):
     Input('load-interval', 'n_intervals'),
 )
 def update_timeline(_n_intervals: int):
-    df = load_file(TIMELINE_FILE)
+    orig_df = load_file(TIMELINE_FILE).rename(
+        columns={'player_count': 'Player count', 'player_change_15_mins': 'Change in 15 mins'}
+    )
+    df = pd.melt(
+        orig_df,
+        id_vars='time', value_vars=['Player count', 'Change in 15 mins'], var_name='type', value_name='value')
+    df['layer'] = orig_df['layer']
+    df['source'] = orig_df['source']
     fig = px.line(
         df,
         x='time',
-        y='player_count',
+        y='value',
         hover_data=['layer', 'source'],
+        color='type',
         color_discrete_sequence=px.colors.qualitative.T10,
-        labels={'player_count': 'Player count'},
-
         render_mode='webg1'
     )
     fig.update_layout(hovermode='x', dragmode='zoom', selectdirection='h')
@@ -278,6 +284,7 @@ def update_timeline(_n_intervals: int):
         )
     )
     fig.update_yaxes(fixedrange=True)
+    fig.for_each_trace(lambda trace: trace.update(visible="legendonly") if trace.name in {'Change in 15 mins'} else ())
     return fig
 
 
@@ -311,7 +318,9 @@ def create_seed_live_charts(relayout):
 def server_current_status():
     server_status = load_file(SEED_LIVE_FILE).iloc[-1]['event']
     df = load_file(TIMELINE_FILE)
-    player_count, current_layer = df.iloc[-1]['player_count'], df.iloc[-1]['layer']
+    player_count, current_layer, change_in_15 = (df.iloc[-1]['player_count'], df.iloc[-1]['layer'],
+                                                 df.iloc[-1]['player_change_15_mins'])
+
     history_df = df.iloc[-120:].sort_values('time', ascending=False).copy()
     history_df['time'] = pd.to_datetime(history_df['time'])
     current_time = history_df.iloc[0]['time']
@@ -323,6 +332,17 @@ def server_current_status():
         time_elapsed_minutes = (current_time - starttime).total_seconds() // 60
         hours, minutes = divmod(time_elapsed_minutes, 60)
         length_string = f'{hours:.0f}h {minutes:.0f}m'
+
+    server_live_in_components = []
+    if server_status == 'seed':
+        players_needed = 60 - player_count
+        server_live_in = (players_needed / change_in_15) * 15
+        if 0 < server_live_in < 240:
+            server_live_in_components = [
+                html.Span('Server is live in: '),
+                html.B(round(server_live_in, 0), style={'fontSize': 19}),
+                html.Span(' minutes.', style={'paddingRight': '5px'}),
+            ]
 
     return [
         html.Span('Player count: '),
@@ -337,7 +357,7 @@ def server_current_status():
         html.Span('Server is '),
         html.B(pretty_events[server_status], style={'fontSize': 19}),
         html.Span('.', style={'paddingRight': '5px'}),
-    ]
+    ] + server_live_in_components
 
 
 def get_timeframe(data: dict | None) -> tuple[datetime.time, datetime.time] | None:

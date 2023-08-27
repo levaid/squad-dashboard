@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import re
 import time
@@ -7,6 +8,9 @@ from functools import lru_cache
 import numpy as np
 import pandas as pd
 import schedule
+
+
+logger = logging.getLogger()
 
 
 def parse_args():
@@ -27,7 +31,7 @@ def process(log_folder: str):
     event_data = create_event_log(timeline_data)
     event_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
     endtime = time.time()
-    print(f'Job took {endtime-starttime:.2f} seconds.')
+    logger.info(f'Job took {endtime-starttime:.2f} seconds.')
     return True
 
 
@@ -136,6 +140,9 @@ def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     processed_data = raw_data['data'].apply(process_row)
     timeline_df = pd.json_normalize(processed_data)
     df = pd.concat([df[['time']], timeline_df], axis=1)
+    df['player_change_15_mins'] = df[['player_count', 'time']]\
+        .rolling('15min', on='time')\
+        .apply((lambda x: x.iloc[-1] - x.iloc[0]))['player_count']
     return df
 
 
