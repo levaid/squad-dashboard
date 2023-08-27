@@ -9,8 +9,7 @@ import numpy as np
 import pandas as pd
 import schedule
 
-
-logger = logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def parse_args():
@@ -31,7 +30,7 @@ def process(log_folder: str):
     event_data = create_event_log(timeline_data)
     event_data.to_csv((os.path.join(log_folder, 'seed_live_info.csv')), index=False)
     endtime = time.time()
-    logger.info(f'Job took {endtime-starttime:.2f} seconds.')
+    logging.info(f'Job took {endtime - starttime:.2f} seconds.')
     return True
 
 
@@ -86,7 +85,7 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
             event_happening = False
 
     if current_event in {'live', 'seed'}:  # we finished on Live, we have to add this manually:
-        event_log.append((len(player_count_log)-1, current_event))
+        event_log.append((len(player_count_log) - 1, current_event))
 
     data = [{
         'event': event,
@@ -97,7 +96,8 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
 
     event_df['previous_event'] = event_df['event'].shift(1)
     event_df['previous_event_time'] = event_df['time'].shift(1)
-    event_df['duration'] = event_df.apply(lambda row: (row['time'] - row['previous_event_time']).total_seconds(), axis=1)
+    event_df['duration'] = event_df.apply(lambda row: (row['time'] - row['previous_event_time']).total_seconds(),
+                                          axis=1)
     event_df['hours'] = event_df['duration'].apply(lambda t: round(t / 3600, 2))
     return event_df
 
@@ -140,8 +140,8 @@ def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     processed_data = raw_data['data'].apply(process_row)
     timeline_df = pd.json_normalize(processed_data)
     df = pd.concat([df[['time']], timeline_df], axis=1)
-    df['player_change_15_mins'] = df[['player_count', 'time']]\
-        .rolling('15min', on='time')\
+    df['player_change_15_mins'] = df[['player_count', 'time']] \
+        .rolling('15min', on='time') \
         .apply((lambda x: x.iloc[-1] - x.iloc[0]))['player_count']
     return df
 
@@ -155,9 +155,9 @@ def create_match_data(timeline_df: pd.DataFrame) -> pd.DataFrame:
     # Create a new column that indicates when 'layer' changes
     df['layer_changed'] = df['layer'].ne(df['previous_layer'])
     layer_df = df.query('layer_changed == True').dropna(subset='previous_layer').copy()
-    mapchange_indices = zip([0] + list(layer_df.index)[:-1], list(layer_df.index))  # dirty trick to get the index intervals
+    mapchange_indices = zip([0] + list(layer_df.index)[:-1],
+                            list(layer_df.index))  # dirty trick to get the index intervals
     mapchange_player_counts = [np.mean(df['player_count'].loc[start: stop]) for start, stop in mapchange_indices]
-
 
     # Calculate the time difference for each row compared to the previous row
     layer_df['time_diff'] = layer_df['time'].diff()
