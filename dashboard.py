@@ -281,8 +281,9 @@ def update_timeline(_n_intervals: int):
                 dict(count=1, label="1M", step="month", stepmode="backward"),
                 dict(step="all")
             ])
-        )
+        ),
     )
+    # fig.update_xaxes(range=[datetime.datetime.now() - datetime.timedelta(days=14), datetime.datetime.now()])
     fig.update_yaxes(fixedrange=True)
     fig.for_each_trace(lambda trace: trace.update(visible="legendonly") if trace.name in {'Change in 15 mins'} else ())
     return fig
@@ -337,7 +338,7 @@ def server_current_status():
     if server_status == 'seed':
         players_needed = 60 - player_count
         server_live_in = (players_needed / change_in_15) * 15
-        if 0 < server_live_in < 240:
+        if 0 < server_live_in < 120:
             server_live_in_components = [
                 html.Span('Server is live in: '),
                 html.B(round(server_live_in, 0), style={'fontSize': 19}),
