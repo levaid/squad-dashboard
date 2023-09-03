@@ -105,7 +105,7 @@ def create_event_log(timeline_df: pd.DataFrame) -> pd.DataFrame:
 def parse_battlemetrics_data(d: str):
     layer = get_regex_from_data(d, re.compile(r'Map;(\w+);'), '')
     return {
-        'player_count': int(get_regex_from_data(d, re.compile(r'Player count;(\d+);'), '-1')),
+        'player_count': int(get_regex_from_data(d, re.compile(r'Player count;(\d+)'), '-1')),
         'layer': layer,
         'seeding': 'seed' in layer.lower(),
         'source': 'Battlemetrics'
@@ -139,7 +139,7 @@ def create_timeline(raw_data_with_errors: pd.DataFrame) -> pd.DataFrame:
     df['time'] = pd.to_datetime(df['time'])
     processed_data = raw_data['data'].apply(process_row)
     timeline_df = pd.json_normalize(processed_data)
-    df = pd.concat([df[['time']], timeline_df], axis=1)
+    df = pd.concat([df[['time']], timeline_df], axis=1).query('layer != "Unknown"')
     df['player_change_15_mins'] = df[['player_count', 'time']] \
         .rolling('15min', on='time') \
         .apply((lambda x: x.iloc[-1] - x.iloc[0]))['player_count']
