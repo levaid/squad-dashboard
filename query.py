@@ -38,11 +38,12 @@ def parse_args():
 
 
 def get_server_info(server_id_battlemetrics: int, server_id_squadservers: int) -> str:
-    battlemetrics_data = get_server_info_battlemetrics(server_id_battlemetrics)
-    if battlemetrics_data != 'ERROR':
-        return battlemetrics_data
     squad_server_info = get_server_info_squad_servers(server_id_squadservers)
-    return squad_server_info
+    if squad_server_info != 'ERROR':
+        return squad_server_info
+
+    battlemetrics_data = get_server_info_battlemetrics(server_id_battlemetrics)
+    return battlemetrics_data
 
 
 def get_server_info_battlemetrics(server_id: int) -> str:
