@@ -112,10 +112,14 @@ def parse_battlemetrics_data(d: str):
     }
 
 
+def scale_to_0_100(num: int) -> int:
+    return max(min(num, 100), 0)
+
+
 def parse_squadservers_data(d: str):
     layer = get_regex_from_data(d, re.compile(r'Map;;(\w+)'), '')
     return {
-        'player_count': int(get_regex_from_data(d, re.compile(r'Players;;(\d+)/'), '-1')),
+        'player_count': scale_to_0_100(int(get_regex_from_data(d, re.compile(r'Players;;(\d+)/'), '-1'))),
         'layer': layer,
         'seeding': 'seed' in layer.lower(),
         'source': 'Squad-servers.com'
