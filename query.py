@@ -11,6 +11,10 @@ import csv
 import schedule
 from bs4 import BeautifulSoup
 
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def main():
     args = parse_args()
@@ -38,9 +42,9 @@ def parse_args():
 
 
 def get_server_info(server_id_battlemetrics: int, server_id_squadservers: int) -> str:
-    squad_server_info = get_server_info_squad_servers(server_id_squadservers)
-    if squad_server_info != 'ERROR':
-        return squad_server_info
+    # squad_server_info = get_server_info_squad_servers(server_id_squadservers)
+    # if squad_server_info != 'ERROR':
+    #     return squad_server_info
 
     battlemetrics_data = get_server_info_battlemetrics(server_id_battlemetrics)
     return battlemetrics_data
@@ -77,6 +81,10 @@ def job(battlemetrics_id: int, squadservers_id: int, folder: str):
         writer = csv.writer(outfile)
         server_info = get_server_info(battlemetrics_id, squadservers_id)
         current_time = get_current_time()
+        if server_info != 'ERROR':
+            logging.info(f'Successful query.')
+        else:
+            logging.info(f'Unsuccessful query.')
         writer.writerow([current_time, server_info])
 
 

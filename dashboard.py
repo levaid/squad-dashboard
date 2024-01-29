@@ -35,7 +35,7 @@ pretty_events = {
 EVENT_COLORMAP = {'seed': px.colors.qualitative.Dark24_r[0], 'live': px.colors.qualitative.Dark24_r[1]}
 
 server = flask.Flask(__name__)
-app = Dash(__name__, server=server, title='MAD server statistics',
+app = Dash(__name__, server=server, title='Skira server statistics',
            url_base_pathname='/squad-dashboard/')  # type: ignore
 
 
@@ -59,7 +59,7 @@ app.layout = html.Div([
         max_intervals=0,  # <-- only run once
         interval=1
     ),
-    html.H1(children=[html.Span('MAD server statistics by Cucuska2 '),
+    html.H1(children=[html.Span('Skira server statistics by Cucuska2 '),
                       html.Img(src=app.get_asset_url('goblin.png'), style={
                           'height': '32px',
                           'verticalAlign': 'bottom',
