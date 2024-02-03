@@ -60,10 +60,10 @@ app.layout = html.Div([
         interval=1
     ),
     html.H1(children=[html.Span('Skira server statistics by Cucuska2 '),
-                      html.Img(src=app.get_asset_url('goblin.png'), style={
-                          'height': '32px',
+                      html.Img(src=app.get_asset_url('hogwild.png'), style={
+                          'height': '48px',
                           'verticalAlign': 'bottom',
-                          'paddingBottom': '8px'
+                          'paddingBottom': '0px'
                       }),
                       ],
             style={'textAlign': 'center'}),
