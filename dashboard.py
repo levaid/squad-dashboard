@@ -272,8 +272,8 @@ def update_timeline(_n_intervals: int):
         type="date",
         rangeselector=dict(
             buttons=list([
-                dict(count=1, label="1h", step="hour", stepmode="backward"),
-                dict(count=6, label="6h", step="hour", stepmode="backward"),
+                dict(count=2, label="2h", step="hour", stepmode="backward"),
+                dict(count=12, label="12h", step="hour", stepmode="backward"),
                 dict(count=1, label="1d", step="day", stepmode="backward"),
                 dict(count=3, label="3d", step="day", stepmode="backward"),
                 dict(count=7, label="1w", step="day", stepmode="backward"),
